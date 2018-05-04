@@ -1,0 +1,48 @@
+---
+title: "Shiny on Heroku"
+author: "Andrew Watson"
+date: "May 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(error = FALSE)
+```
+
+## Intro
+
+This tutorial[^1] teaches you how to
+
+  - Host R Shiny applications on the [Heroku](https://heroku.com) platform
+  - Apply security to those applications via forced https, OAuth, and nginx
+  - Use Heroku Postgres with the apps
+  
+## Requirements
+
+You'll need to install a lot of software if you haven't already.[^2] Let's assume that if you've gotten this far you've installed R + RStudio, but perhaps you haven't installed some of the Heroku specific requirements.
+
+  - [Git](https://git-scm.com/downloads)
+  - [Heroku command line tools](https://devcenter.heroku.com/articles/heroku-cli). You'll also need a [Heroku account](https://heroku.com).[^3]
+  - [latest PostgresQL](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads). **Huge note** when you install this, please make sure you remember your superuser password. For the sake of this tutorial, we will assume you set the password as **admin**.
+
+## Your first Heroku app
+
+Let's get started by creating a simple unsecured Heroku application. The application files are located in the `1. simple unsecured app`() directory of this repository
+
+### Create a new repo, or clone this one.
+
+Either clone this repository or create your own on [Github](https://github.com). You can clone directly in RStudio by going to
+
+    File > New Project...
+
+
+
+***
+
+[^1] I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, doesn't require web dev / server knowledge... oh and its free.
+
+[^2] If you are a Salesforce F&S user of this, you can refer to the [Quip doc](https://salesforce.quip.com/TkOlAkNxVWqJ) on how to install the core software required for this.
+
+[^3] Salesforce F&S users, hello again, you'll need to create a Heroku account by going to this [link here](https://sso.heroku.com/saml/sfdc-aloha/init). Please also reference the Concierge article on [Heroku for SFDC Employees](https://concierge.it.salesforce.com/articles/en_US/Supportforce_Article/Heroku-for-SFDC-Employees) for common questions.
