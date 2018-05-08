@@ -394,6 +394,12 @@ Now commit and push your new and improved app to heroku.
     $ git commit -m "added nginx"
     $ git push heroku
 
+***
+
+## Adding OAuth
+
+Now that you have an app with a firewall let's add on a final layer of security, OAuth. Ever use a "Login with Facebook" or "Login with Google" or "Login with Salesforce" button? Those are created via OAuth. OAuth is a method of authenticating with a user account on a different service to utilize that service's API, and secure you own personal applications
+
 
 
 
