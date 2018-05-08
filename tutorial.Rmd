@@ -285,7 +285,7 @@ This will tell Heroku to install nginx first.
 
 #### Modify `run.R`
 
-Now we need to modify the `run.R` file to run *behind* NGINX. We can modify our existing `run.R` file by replacing it the following code,
+Now we need to modify the `run.R` file to run *behind* NGINX. We can modify our existing `run.R` file by replacing it the following code (note `runApp()` has also changed!),
 
 ```{r eval=FALSE}
 library(shiny)
@@ -403,7 +403,6 @@ Now that you have an app with a firewall let's add on a final layer of security,
 
 This tutorial will walk you through how to add Hadley's [Oauth on Shiny apps](https://gist.github.com/hadley/144c406871768d0cbe66b0b810160528) script to  your `run.R` file.
 
-
 ### How it works
 
 At its basic OAuth works by doing the following,
@@ -428,7 +427,13 @@ A quick guide to the basic terms is,
   - `http`: http is how web browsers and many programs talk to the internet. It is a standard way of communicating across sercvices
   
   - `https`: https is a secure http connection. Terms you will see associated with this are also `SSL`, `TLS`, *certificate*, etc. All of this just refers to a secure http connection between a browser and a web server. All modern web pages are hosted on **https**, easily identified by the `Secure` flag in the upper left hand side of your url bar.
+  
+  - `IP Address`: hopefully you know this, but an IP address is the location of a web server on the open internet. In the modern internet, IP addresses of things usually change a lot, especially services on cloud solutions such as Heroku. The IP address for your local computer is always `127.0.0.1` or simply `localhost`.
+  
+  - `Domain name`: the way that we know where a given application is at any point in time is via the `domain name`. Even if the IP adress of a server is constantly changing, the `domain name` should always point to the correct IP. By default on heroku all apps are given a domain of `https://app-name.herokuapp.com`. When you type that into the browser, it evaluates as an IP address and sends your computer there.
 
+  - `Port`: a port is a number associated with an IP address on a webserver. The IP address is the location of the web server, however that web server may have multiple services it is hosting (many apps). You can access specific apps on a webserver at a specific IP address by specifying the port number. Shiny for example may be on a webserver with IP address `275.219.201.189`  but running on port `8080`. The address to that Shiny app is then `https://275.291.201.189:8080`. When testing on your computer you can define a specific port to run Shiny on (normally anything above 4000). You can then access the app while its running in your web browser. For example, a Shiny app runnning on your local computer on port `8000` will have the address `http://localhost:8000`. 
+  
   - `GET`: a `GET` request is an http request *asking* for data. When you go to `https://heroku.com` you are performing a `GET` request to ask for the web pages information. That information is then downloaded to your browser and displayed for you. **Anytime you ask a URL for data you perform a GET request**
   
   - `POST`: a `POST` request is a http request to *submit* data into a server. For example, when you fill in a form and click the *submit* button on a website, it performs a `POST` request to the server saying "hey, I got some data here, can you save it?."
@@ -440,12 +445,202 @@ A quick guide to the basic terms is,
   - `REST`: a REST API is an API that communicates to a program via `GET` and `POST` requests to a serviuce such as Google, Facebook, Salesforce, etc. These services create different URLs that you can query via `GET` requests to get different information. For example, in the [Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_what_is_rest_api.htm) we can do things like pull down Chatter posts, investigate opportunities, view profile info, etc. REST APIs are incredibly common and most major services have them, because they work over `http` almost every single language can use them.
   
   - `httr`: [httr](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) is the R package for doing all the things listed above. **I recommend reading the docs on httr** its incredibly useful, and unlocks the ability to use R with many web services.
-  
-  
-### Setting up OAuth
 
-Follow Hadley's code and apply it to `run.R`. You'll need to register a new OAuth on your *personal* github at [Github](https://github.com)
+### Your first OAuth
 
+Now that you've reviewed your terms and have a little bit more familiarity with how internet applications work lets setup an OAuth wall in front of our existing app. This first pass OAuth will setup using an existing Github app's information. Once we have that working, we will guide you through how to set it up on your own.
+
+This app is based almost entirely on a Gist authored by Hadley [here](https://gist.github.com/hadley/144c406871768d0cbe66b0b810160528)
+
+#### `init.R`
+
+In order to make OAuth work we need to install the [httr](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) package. To install packages on the Heroku buildpack add a file named `init.R` to your folder. Copy and paste in the code below into that file.
+
+```{r eval=FALSE}
+# Add a list of packages you want to install here
+# The list, like every list in R, should be comma seperated
+# Package names in quotes, e.g. c("lubridate","httr","dplyr")
+my_packages = c("httr")
+
+
+# This is a simple function that will install the packages in the list
+install_if_missing = function(p) {
+  if (p %in% rownames(installed.packages()) == FALSE) {
+    install.packages(p)
+  }
+}
+
+# run the function
+invisible(sapply(my_packages, install_if_missing))
+```
+
+This file is required if you want to install any packages on the Herku app that aren't in the default build (basically everything except Shiny).
+
+#### Remove run line from `app.R`
+
+We are going to pass more of the control of the app over to our `run.R` file. In order to do this properly, we will need to remove a line of code from our existing `app.R` file, or else the two shall conflict.
+
+To do this, simply comment, or remove this line from your `app.R` file,
+
+```{r}
+# Run the application 
+# shinyApp(ui = ui, server = server)
+```
+
+#### Modify `run.R`
+
+The OAuth powerhouse is the `run.R` file. Here we take our existing `run.R` file, and wrap it in a series of functions and setps so that it does the redirect and validates the user is authenticated *before* launching the rest of the app. 
+
+Furthermore, we have to `source()` the `app.R` file because we need to wrap the `ui` portion into a new `uiFunc` which prevents creation of the `ui` until the oauth is complete.
+
+Copy and paste the code below, *in its entirety* into your `run.R` file.
+
+```{r eval=FALSE}
+# TODO: To get this to work on Heroku you will need to fill out the info,
+# set APP_URL to your heroku apps url 
+# set key = to the Github application's Client ID
+# set secret = to the Github application's Client Secret
+# Create a Github OAuth app here https://github.com/settings/applications/new
+
+
+library(shiny)
+library(httr)
+
+RunHerokuApp <- function() {
+  
+  # OAuth setup --------------------------------------------------------
+  # (1) Most OAuth applications require that you redirect to a fixed and known
+  # set of URLs. Many only allow you to redirect to a single URL: if this
+  # is the case for, you'll need to create an app for testing with a localhost
+  # url, and an app for your deployed app.
+  
+  if (interactive()) {
+    # testing url and token
+    options(shiny.port = 8100)
+    APP_URL <- "http://localhost:8100/"
+    
+    # (2) Note that secret is not really secret, and it's fine to include inline
+    app <- oauth_app("shiny-local-app",
+      key = "51d46f96810d1fd182a2",
+      secret = "66eec8782825eeb61007dbef32f91afc9c3587aa",
+      redirect_uri = APP_URL
+    )
+    
+  } else {
+    
+    setwd('/app')
+    
+    # deployed URL and token
+    APP_URL <- "https://my-app-name.herokuapp.com/" # NOTE: SET THIS TO YOUR APP'S URL
+    
+    # (2) Note that secret is not really secret, and it's fine to include inline
+    # NOTE: SET THIS BASED ON YOUR GITHUB APP.
+    app <- oauth_app("my-heroku-app", 
+      key = "MY_APP_ID",
+      secret = "MY_SECRET_KEY",
+      redirect_uri = APP_URL
+    )
+  }
+  
+  # (3) Here I'm using a canned endpoint, but you can create with oauth_endpoint()
+  api <- oauth_endpoints("github")
+  
+  # (4) Always request the minimal scope needed. For github, an empty scope
+  # gives read-only access to public info
+  scope <- ""
+  
+  # Shiny -------------------------------------------------------------------
+  
+  # Bring in the server.R and ui.R objects
+  source('app.R')
+  
+  has_auth_code <- function(params) {
+    # params is a list object containing the parsed URL parameters. Return TRUE if
+    # based on these parameters, it looks like auth codes are present that we can
+    # use to get an access token. If not, it means we need to go through the OAuth
+    # flow.
+    return(!is.null(params$code))
+  }
+  
+  # (5) A little-known feature of Shiny is that the UI can be a function, not just
+  # objects. You can use this to dynamically render the UI based on the request.
+  # We're going to pass this uiFunc, not ui, to shinyApp(). If you're using
+  # ui.R/server.R style files, that's fine too--just make this function the last
+  # expression in your ui.R file.
+  uiFunc <- function(req) {
+    
+    # (6) Check if HTTPs
+    if (!interactive()) {
+      if (req$HTTP_X_FORWARDED_PROTO != "https") {
+        return("ERROR: Not HTTPS")
+      }
+    } else {
+      print("localhost app, not verifying https")
+    }
+    
+    # (7) Check if token in URL, else redirect
+    if (!has_auth_code(parseQueryString(req$QUERY_STRING))) {
+      url <- oauth2.0_authorize_url(api, app, scope = scope)
+      redirect <- sprintf("location.replace(\"%s\");", url)
+      tags$script(HTML(redirect))
+    } else {
+      
+      # (8) Manually create a token (saved to local environment)
+      token <<- oauth2.0_token(
+        app = app,
+        endpoint = api,
+        credentials = oauth2.0_access_token(
+          api, 
+          app, 
+          parseQueryString(req$QUERY_STRING)$code
+        ),
+        cache = FALSE
+      )
+      
+      # (9) Perform a GET request to confirm access
+      resp <- GET("https://api.github.com/user", config(token = token))
+      stop_for_status(resp) # CRASH APP IF ERROR RETURNED
+      
+      return(ui) # otherwise return UI
+    }
+  }
+  
+  # (10) Note that we're using uiFunc, not ui!
+  if (interactive()) {
+    
+    # run locally
+    shinyApp(uiFunc, server)
+    
+  } else {
+    
+    # Create a file at the path /tmp/app-initalized
+    # This tells nginx that the app is running, and it can now forward traffic to the custom 'port' below
+    # If this file is created, nginx will simply wait forever until the app says its running
+    file.create("/tmp/app-initialized")
+    port <- '/tmp/nginx.socket'
+    attr(port, 'mask') <- strtoi("117", 8)
+      
+      
+    # Runs the app in the working directory. By default this will search for an `app.R` file or 
+    # a ui.R + server.R file combination
+    # In this case the port is now the address to the nginx proxy
+    shiny::runApp(
+      appDir = shinyApp(uiFunc, server),
+      port = port
+    )
+  }
+}
+
+RunHerokuApp()
+```
+
+#### Run it locally
+
+Try now running this file, you should see a login prompt appear asking you to login to Github. Woo!
+
+#### Setup Github OAuth app
+
+To get it to run on Heroku however, you 
 
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
