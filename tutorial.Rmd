@@ -116,7 +116,7 @@ Your file directory should only have the following files in it,
      run.R
      some .Rproj file
      .gitignore
-     
+
 If you forked this repository you have some other junk, but those are the essentials. **If you do not see all those files in your repository, go back and carefully re-read these instructions.**
 
 ### Commit & Push
@@ -159,12 +159,79 @@ To commit (backup) your changes
     
 Each time you commit, you need to run those two commands. The `-m` option stands for *message*. You can change this based on what you actually changed.
 
+To push (upload) your changes run this command. Remember, `origin` is Git speak for Github.
+
+    $ git push origin
+    
+When using Heroku, we will be focusing on using the Terminal Git commands.
+
+### Heroku command line tools
+
+Time to upload this shit to Heroku and startup the app. To interact with Heroku we will use the Heroku command line tools, again by using the RStudio Terminal window.
+
+Navigate to the Terminal
+    
+    Alt + Shift + T
+    
+Type in `heroku` and hit enter. You should see a large list of base commands pop up. You should always go back to this list when wondering *how the hell do I do this in the Heroku command line?* Remember also, you can find the options, explanation, and examples for any command in heroku by running
+
+    $ heroku help command-name
+
+For example, to figure out how to login you can run
+
+    $ heroku help login
+    
+#### heroku login
+
+If you are using a simple free Heroku account you can login by using
+
+    $ heroku login
+    
+and passing in your credentials.
 
 
+If you have an enterprise heroku account, with single sign on (sso) enabled **hint hint Salesforce employees this is you!** run the following command,
 
+    $ heroku login --sso
+  
+When it prompts you, add the name of your organization (for Salesforce employees this is `sfdc-aloha`) and then pass in the appropriate access token from the web browser window that opens. Note that when using the Terminal common copy paste commands `Ctrl + V` and `Ctrl + C` are disabled. You need to right click `Paste` to paste items into the Terminal.
 
+#### heroku apps:create
 
-***
+Now that you've hopefully managed to login let's create your first app using the `heroku apps:create` command. Remember, you can see the options of this command by running
+
+    $ heroku help apps:create 
+    
+This will create a default app in your personal app space simply run the following,
+
+    $ heroku apps:create name-of-your-app
+
+If you are running Heroku Enterprise and have a specific organization and or Private Space (**looking at you F&S**), you can set further parameters by doing
+    
+    $ heroku apps:create name-of-your-secure-app -t sfdc-gbo-fns --space fns-confidential
+    
+Creating an app in a Private Space is expensive but will make it incredibly secure. Only do this if hosting app with company confidential and or sensitive data.
+
+#### heroku buildpacks
+
+Now that we've created the app we need to tell Heroku to install R on it. You can instruct Heroku to install certain programs on an app by using **buildpacks.** Heroku has some standard buildpacks, but most of them are created by community members and hosted on Github.
+
+For our apps we are going to start by using the [Heroku buildpack R](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Note we are using the heroku-16 version.
+
+<h5 style='color: red'>**STOP**</h5>
+
+Before going on with the tutorial please **EXTENSIVELY** review the documentation on the [buildpack's website](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Most of the tutorial will be leveraging information in that documentation, and will assume you have read it.
+
+Okay, now that you've read that add the buildpack to the app,
+
+    $ heroku buildpacks:add http://github.com/virtualstaticvoid/heroku-buildpack-r.git#heroku-16
+    
+### Push to heroku!
+
+Once the buildpack has been added you are good to go. You can push your brand new app directly to heroku by using the following command in the Terminal,
+
+    $ git push heroku master
+    
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
 
