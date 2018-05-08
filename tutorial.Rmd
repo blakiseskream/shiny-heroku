@@ -502,7 +502,6 @@ Copy and paste the code below, *in its entirety* into your `run.R` file.
 # set secret = to the Github application's Client Secret
 # Create a Github OAuth app here https://github.com/settings/applications/new
 
-
 library(shiny)
 library(httr)
 
@@ -640,7 +639,17 @@ Try now running this file, you should see a login prompt appear asking you to lo
 
 #### Setup Github OAuth app
 
-To get it to run on Heroku however, you 
+To get it to run on Heroku however, you need to setup your own Github OAuth application that works with your app's URL. To do that first, if you haven't already, create a *public* [Github account](https://github.com/join). Note that this is different than a Github Enterprise account, which is a *private* account.
+
+Once you've created a Github account, create a new Github OAuth account [here](https://github.com/settings/applications/new).
+
+Fill out the information. The most important part is that you set the `Authorization callback URL` to the URL of your Heroku application.
+
+Once you create the app you will notice that your `Client Secret` and `Client ID` are now available.
+
+Go back to your `run.R` and pop those bad boys into the `oauth_app()` part.
+
+### Commit & Push
 
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
