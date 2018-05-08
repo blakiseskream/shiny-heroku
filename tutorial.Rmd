@@ -3,10 +3,11 @@ title: "Shiny on Heroku"
 author: "Andrew Watson"
 runtime: shiny
 date: "May 2018"
-output: html_document
-  df_print: paged
-  toc: true
-  toc_float: true
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
