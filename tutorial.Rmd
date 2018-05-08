@@ -403,8 +403,6 @@ Now that you have an app with a firewall let's add on a final layer of security,
 
 This tutorial will walk you through how to add Hadley's [Oauth on Shiny apps](https://gist.github.com/hadley/144c406871768d0cbe66b0b810160528) script to  your `run.R` file.
 
-** Challenge:** Danielle, while I'm getting an ultrasound can you incorporate this script into `run.R`? You will need to register an OAuth app on your *personal* Github account.
-
 
 ### How it works
 
@@ -412,6 +410,41 @@ At its basic OAuth works by doing the following,
 
   1. When a browser request comes in, redirect the browser to the OAuth provider's authentication url (e.g. https://login.salesforce.com/services/oauth2/authorize) with a registered app id (sometimes called client id) and secret code (sometimes called client secret, app secret, consumer secret, etc.)
   
+  2. Some magic happens while the user logs in
+  
+  3. The provider (e.g. Google, Facebook, Salesforce) redirects the user back to the Shiny app, only this time the url contains a secret code called a *token*
+  
+  4. The app uses the *token* to then query the service for some information. For example, we can ask Github for user profile information by adding the token to the url (called an *endpoint*) https://api.github.com/user 
+  
+  
+The trick here is to have the app run only after a successful *reponse* has been received from the service after step **4**. Then, and only then, do we know for certain that the user has a valid authentication token and was able to login successfully with the service.
+
+#### A note on REST and http
+
+Going forward in this tutorial we will be using lots of terms like *GET*, *POST*, *endpoint*, *https*, etc. All of these terms refer to ways that web browsers interact with web servers. At its core, our Shiny app is just a web server, and we need to program it to function as such by using certain things that are built into all web browsers.
+
+A quick guide to the basic terms is,
+
+  - `http`: http is how web browsers and many programs talk to the internet. It is a standard way of communicating across sercvices
+  
+  - `https`: https is a secure http connection. Terms you will see associated with this are also `SSL`, `TLS`, *certificate*, etc. All of this just refers to a secure http connection between a browser and a web server. All modern web pages are hosted on **https**, easily identified by the `Secure` flag in the upper left hand side of your url bar.
+
+  - `GET`: a `GET` request is an http request *asking* for data. When you go to `https://heroku.com` you are performing a `GET` request to ask for the web pages information. That information is then downloaded to your browser and displayed for you. **Anytime you ask a URL for data you perform a GET request**
+  
+  - `POST`: a `POST` request is a http request to *submit* data into a server. For example, when you fill in a form and click the *submit* button on a website, it performs a `POST` request to the server saying "hey, I got some data here, can you save it?."
+  
+  - `Endpoint`: an endpoint is just a fancy name for a URL. Specifically, its a URL where you can ask for specific information to work with your program through a services API. Again, the example is to ask Github for user profile info we would go to the `endpoint` https://api.github.com/user 
+  
+  - `API`: API stands for *application programming interface* its a set of easy to use commands, endpoints, etc. that are written in a easy to use common language. This allows you to use something like R to interact with Google Sheets by using the Google Sheets API. R and Google Sheets talk to each other via a commonly known language, in this case a REST API.
+  
+  - `REST`: a REST API is an API that communicates to a program via `GET` and `POST` requests to a serviuce such as Google, Facebook, Salesforce, etc. These services create different URLs that you can query via `GET` requests to get different information. For example, in the [Salesforce REST API](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_what_is_rest_api.htm) we can do things like pull down Chatter posts, investigate opportunities, view profile info, etc. REST APIs are incredibly common and most major services have them, because they work over `http` almost every single language can use them.
+  
+  - `httr`: [httr](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) is the R package for doing all the things listed above. **I recommend reading the docs on httr** its incredibly useful, and unlocks the ability to use R with many web services.
+  
+  
+### Setting up OAuth
+
+Follow Hadley's code and apply it to `run.R`. You'll need to register a new OAuth on your *personal* github at [Github](https://github.com)
 
 
 
