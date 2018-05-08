@@ -399,8 +399,19 @@ Now commit and push your new and improved app to heroku.
 
 ## Adding OAuth
 
-Now that you have an app with a firewall let's add on a final layer of security, OAuth. Ever use a "Login with Facebook" or "Login with Google" or "Login with Salesforce" button? Those are created via OAuth. OAuth is a method of authenticating with a user account on a different service to utilize that service's API, and secure you own personal applications
+Now that you have an app with a firewall let's add on a final layer of security, OAuth. Ever use a "Login with Facebook" or "Login with Google" or "Login with Salesforce" button? Those are created via OAuth. OAuth is a method of authenticating with a user account on a different service to utilize that service's API, and secure you own personal applications.
 
+This tutorial will walk you through how to add Hadley's [Oauth on Shiny apps](https://gist.github.com/hadley/144c406871768d0cbe66b0b810160528) script to  your `run.R` file.
+
+** Challenge:** Danielle, while I'm getting an ultrasound can you incorporate this script into `run.R`? You will need to register an OAuth app on your *personal* Github account.
+
+
+### How it works
+
+At its basic OAuth works by doing the following,
+
+  1. When a browser request comes in, redirect the browser to the OAuth provider's authentication url (e.g. https://login.salesforce.com/services/oauth2/authorize) with a registered app id (sometimes called client id) and secret code (sometimes called client secret, app secret, consumer secret, etc.)
+  
 
 
 
