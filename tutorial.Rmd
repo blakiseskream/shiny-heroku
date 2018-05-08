@@ -4,6 +4,9 @@ author: "Andrew Watson"
 runtime: shiny
 date: "May 2018"
 output: html_document
+  df_print: paged
+  toc: true
+  toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -232,6 +235,167 @@ Once the buildpack has been added you are good to go. You can push your brand ne
 
     $ git push heroku master
     
+This will create, build, and run your app. You should see the log output while it builds. Eventually you should see the following output or similar
+
+    remote:        R 3.4.0 successfully installed (with init)
+    remote: -----> Discovering process types
+    remote:        Procfile declares types     -> (none)
+    remote:        Default types for buildpack -> console, web
+    remote:
+    remote: -----> Compressing...
+    remote:        Done: 235.3M
+    remote: -----> Launching...
+    remote:        Released v3
+    remote:        https://andrews-app.herokuapp.com/ deployed to Heroku
+    remote:
+    remote: Verifying deploy... done.
+    To https://git.heroku.com/andrews-app.git
+     * [new branch]      master -> master
+
+This means its done building. You can visit the app by going to the url mentioned at `https://app-url.herokuapp.com deployed to Heroku`.
+
+#### heroku logs
+
+You can also see the log output if it running by using the following command, 
+
+    $ heroku logs --tail
+    
+Anything with the key `app[web.1]` is the output from R running on your app.
+   
+***   
+ 
+## Add a firewall
+
+Congrats you now have a working Heroku app. Let's add some necessary security to it **note you should always do this really**. 
+
+### NGINX
+
+We are going to layer a firewall on top by using the reverse proxy web service [NGINX](http://nginx.org/en/). Nginx is a *reverse proxy* which means that it routes incoming requests from web browsers, called http requests, to services running internally on the server. Before it routes those requests, it can do certain validating, filtering, authentication, etc.
+
+In our case, the serivce running on our app is the Shiny app from our `run.R` file. To get nginx to work we simply need to add the buidplack, modify the `run.R` file, and then add an nginx config file.[^5]
+
+#### Add buildpack
+
+Add the heroku nginx buildpack to your existing application to index value 1 by running the following in the Terminal, 
+
+    $ heroku buildpacks:add https://github.com/heroku/heroku-buildpack-nginx --index 1
+
+This will tell Heroku to install nginx first.
+
+#### Modify `run.R`
+
+Now we need to modify the `run.R` file to run *behind* NGINX. We can modify our existing `run.R` file by replacing it the following code,
+
+```{r eval=FALSE}
+library(shiny)
+
+# When we run nginx we need to change R to point to the /app folder manually
+setwd('/app')
+
+# Create a file at the path /tmp/app-initalized
+# This tells nginx that the app is running, and it can now forward traffic to the custom 'port' below
+# If this file is created, nginx will simply wait forever until the app says its running
+file.create("/tmp/app-initialized")
+port <- '/tmp/nginx.socket'
+attr(port, 'mask') <- strtoi("117", 8)
+  
+  
+# Runs the app in the working directory. By default this will search for an `app.R` file or 
+# a ui.R + server.R file combination
+# In this case the port is now the address to the nginx proxy
+shiny::runApp(
+  appDir = getwd(),
+  port = port
+)
+```
+
+#### Add a Procfile
+
+Add a file to your directly simply called Procfile (no file extension!). This is a file that tells Heroku what command to run when it starts up. Its a simple file, with only the following line of code,
+
+    web: env FAKECHROOT_EXCLUDE_PATH=/tmp:/bin bin/start-nginx fakechroot fakeroot chroot /app/.root /usr/bin/R -f /app/run.R --gui-none --no-save 
+
+#### Add nginx config
+
+We need to add a custom config file so nginx works with Shiny. Create a `config/` subdirectory and the below code into a new file in that directory. The file is named `nginx.conf.erb`. 
+
+
+    daemon off;
+    #Heroku dynos have at least 4 cores.
+    worker_processes <%= ENV['NGINX_WORKERS'] || 4 %>;
+    
+    events {
+      use epoll;
+      accept_mutex on;
+      worker_connections 1024;
+    }
+    
+    http {
+      gzip on;
+      gzip_comp_level 2;
+      gzip_min_length 512;
+      
+      server_tokens off;
+      
+      log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
+      access_log logs/nginx/access.log l2met;
+      error_log logs/nginx/error.log;
+      
+      include mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      
+      #Must read the body in 5 seconds.
+      client_body_timeout 5;
+      
+      upstream app_server {
+        server unix:/tmp/nginx.socket fail_timeout=0;
+      }
+      
+      server {
+        listen <%= ENV["PORT"] %>;
+        server_name _;
+        keepalive_timeout 5;
+        
+        location / {
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Host $http_host;
+          proxy_redirect off;
+          proxy_pass http://app_server;
+        }
+        
+        location /websocket/ {
+            proxy_pass http://app_server;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+        }
+      }
+    }
+
+### Check yo stuff!
+
+Before you *commit* and *push* check to make sure you have all the necessary files. Your folder should now have the following files in it,
+
+     app.R
+     run.R
+     some .Rproj file
+     .gitignore
+     Procfile
+     config/nginx.conf.erb
+     
+Does it? good.
+
+### Commit + Push to heroku
+
+Now commit and push your new and improved app to heroku.
+
+    $ git add *
+    $ git commit -m "added nginx"
+    $ git push heroku
+
+
+
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
 
@@ -240,3 +404,5 @@ Once the buildpack has been added you are good to go. You can push your brand ne
 [^3]: Salesforce F&S users, hello again, you'll need to create a Heroku account by going to this [link here](https://sso.heroku.com/saml/sfdc-aloha/init). Please also reference the Concierge article on [Heroku for SFDC Employees](https://concierge.it.salesforce.com/articles/en_US/Supportforce_Article/Heroku-for-SFDC-Employees) for common questions.
 
 [^4]: In Git speak to *commit* something is to save and back it up. To *push* is to upload that latest backup (*commit*) to the internet (i.e. Github), Github is referred to as *origin*. You can upload to different places on the internet by adding other *remotes*. A *remote* is simply a location on the internet you are uploading your code to. 
+
+[^5]: Note the original instructions for this are authored by yours truly [in the issues log](https://github.com/virtualstaticvoid/heroku-buildpack-r/issues/116#issuecomment-386169880) of the r buildpack.
