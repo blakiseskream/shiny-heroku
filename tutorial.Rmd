@@ -1,7 +1,8 @@
 ---
 title: "Shiny on Heroku"
 author: "Andrew Watson"
-date: "May 4, 2018"
+runtime: shiny
+date: "May 2018"
 output: html_document
 ---
 
@@ -31,18 +32,144 @@ You'll need to install a lot of software if you haven't already.[^2] Let's assum
 
 Let's get started by creating a simple unsecured Heroku application. The application files are located in the `1. simple unsecured app`() directory of this repository
 
-### Create a new repo, or clone this one.
+### Create a new repo, or fork this one.
 
-Either clone this repository or create your own on [Github](https://github.com). You can clone directly in RStudio by going to
+Either fork this repository by clicking the [fork button]() on the Github page, or create your own on [Github](https://github.com). If you have Git installed you can clone directly in RStudio by going to
 
-    File > New Project...
+    File > New Project... > Version Control > Git
+    
+Make sure you are running RStudio with adminsistrator rights if you are on Windows, and make sure you've restarted your computer since installing Git.
+
+### Create a new Shiny application
+
+Once you have your repository built create your Shiny app by going to
+
+    File > New File > Shiny Web App...
+    
+Name the file as you will (in this example we name it *my-app* and select the `Single File (app.R)` option. 
+
+By default this will create a new folder in your directory with the name of your app. **Move the app.R file out of the new directory and into the main directory of your repository.** Delete the now empty folder that the `app.R` file was in.
+
+You can quickly run your first simple app if you wish by opening the `app.R` file. In RStudio a button should appear in the upper right hand corner with a green triangle that says `Run App`. Alternatively, you can just run the file. You should see the default Shiny app open up with the Geyser's visualization, similar to the below.
+
+***
+
+#### Old Faithful Geyser Data
+```{r echo=FALSE}
+
+sliderInput("bins",
+           "Number of bins:",
+           min = 1,
+           max = 50,
+           value = 30)
+
+```
+
+
+```{r echo=FALSE}
+renderPlot({
+    # generate bins based on input$bins from ui.R
+    x    <- faithful[, 2] 
+    bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    
+    # draw the histogram with the specified number of bins
+    hist(x, breaks = bins, col = 'darkgray', border = 'white')
+ })
+
+```
+
+
+### Add a `run.R` file
+
+In order to have the application work with Heroku, you will need a `run.R` file. The Heroku app *runs* the `run.R` file once it starts up (woah!). This file does any setup that needs to occur before the app itself is launched. In this first unsecured app with a single file `app.R` the `run.R` file will simply set the port and run the application. To create the `run.R` file go to
+
+    File > New File > R Script
+    
+Copy + paste in the code below into the file.
+
+```{r eval=FALSE}
+# simple run.R
+library(shiny)
+
+# Gets the port # from Heroku
+port <- Sys.getenv('PORT')
+
+# Runs the app in the working directory. By default this will search for an `app.R` file or 
+# a ui.R + server.R file combination
+# The host of 0.0.0.0 indicates the app runs at the web server's ip address
+shiny::runApp(
+  appDir = getwd(),
+  host = '0.0.0.0',
+  port = as.numeric(port)
+)
+```
+
+Save that shit!
+
+### Have all your files?
+
+Woo! you now have all you need for your first app.
+
+Your file directory should only have the following files in it,
+
+     app.R
+     run.R
+     some .Rproj file
+     .gitignore
+     
+If you forked this repository you have some other junk, but those are the essentials. **If you do not see all those files in your repository, go back and carefully re-read these instructions.**
+
+### Commit & Push
+
+Remember, when using R with Github to *commit* and *push*[^4] your work as frequently as possible to avoid losing work, propogating errors, and generally being bad at your job. 
+
+#### Using the nice interface
+
+In RStudio you can do this by selecting
+
+    Tools > Version Control > Commit...
+    
+Or if you prefer hot keys
+
+    Ctrl + Alt + M
+
+Select the checkboxes next to the files and changes you have made to *Stage* changes for the commit. Write a message in the Commit box then click the `Commit` button. This should run the Git command to commit your changes.
+
+Once your changes are *committed* select the *Push* button to upload those changes to Github. 
+
+#### Using the Terminal (preferred way)
+
+You can also *commit* and *push* by running the commands directly into the `Terminal` window in RStudio.
+
+To open the Terminal either click the Terminal window in the bottom pane of your screen or go to
+
+    Tools > Terminal > Move Focus to Terminal
+    
+Again, if you prefer hotkeys the command is
+
+    Alt + Shift + T
+
+In the Terminal run the following commands,
+
+To commit (backup) your changes
+
+    $ git add *
+    
+    $ git commit -m "added app.R and run.R files"
+    
+Each time you commit, you need to run those two commands. The `-m` option stands for *message*. You can change this based on what you actually changed.
+
+
+
 
 
 
 ***
 
-[^1] I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, doesn't require web dev / server knowledge... oh and its free.
+[^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
 
-[^2] If you are a Salesforce F&S user of this, you can refer to the [Quip doc](https://salesforce.quip.com/TkOlAkNxVWqJ) on how to install the core software required for this.
+[^2]: If you are a Salesforce F&S user of this, you can refer to the [Quip doc](https://salesforce.quip.com/TkOlAkNxVWqJ) on how to install the core software required for this.
 
-[^3] Salesforce F&S users, hello again, you'll need to create a Heroku account by going to this [link here](https://sso.heroku.com/saml/sfdc-aloha/init). Please also reference the Concierge article on [Heroku for SFDC Employees](https://concierge.it.salesforce.com/articles/en_US/Supportforce_Article/Heroku-for-SFDC-Employees) for common questions.
+[^3]: Salesforce F&S users, hello again, you'll need to create a Heroku account by going to this [link here](https://sso.heroku.com/saml/sfdc-aloha/init). Please also reference the Concierge article on [Heroku for SFDC Employees](https://concierge.it.salesforce.com/articles/en_US/Supportforce_Article/Heroku-for-SFDC-Employees) for common questions.
+
+[^4]: In Git speak to *commit* something is to save and back it up. To *push* is to upload that latest backup (*commit*) to the internet (i.e. Github), Github is referred to as *origin*. You can upload to different places on the internet by adding other *remotes*. A *remote* is simply a location on the internet you are uploading your code to. 
