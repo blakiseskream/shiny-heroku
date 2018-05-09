@@ -507,7 +507,7 @@ library(httr)
 
 RunHerokuApp <- function() {
   
-  # OAuth setup --------------------------------------------------------
+# OAuth setup --------------------------------------------------------
   # (1) Most OAuth applications require that you redirect to a fixed and known
   # set of URLs. Many only allow you to redirect to a single URL: if this
   # is the case for, you'll need to create an app for testing with a localhost
@@ -548,7 +548,7 @@ RunHerokuApp <- function() {
   # gives read-only access to public info
   scope <- ""
   
-  # Shiny -------------------------------------------------------------------
+# Shiny -------------------------------------------------------------------
   
   # Bring in the server.R and ui.R objects
   source('app.R')
@@ -647,9 +647,23 @@ Fill out the information. The most important part is that you set the `Authoriza
 
 Once you create the app you will notice that your `Client Secret` and `Client ID` are now available.
 
-Go back to your `run.R` and pop those bad boys into the `oauth_app()` part.
+Go back to your `run.R` and pop those bad boys into the `oauth_app()` part,
+
+```{r eval=FALSE}
+# deployed URL and token
+APP_URL <- "https://my-app-name.herokuapp.com/" # NOTE: SET THIS TO YOUR APP'S URL
+
+# (2) Note that secret is not really secret, and it's fine to include inline
+# NOTE: SET THIS BASED ON YOUR GITHUB APP.
+app <- oauth_app("my-heroku-app", 
+  key = "MY_APP_ID",
+  secret = "MY_SECRET_KEY",
+  redirect_uri = APP_URL
+)
+```
 
 ### Commit & Push
+
 
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
