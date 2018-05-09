@@ -418,7 +418,7 @@ At its basic OAuth works by doing the following,
   
 The trick here is to have the app run only after a successful *reponse* has been received from the service after step **4**. Then, and only then, do we know for certain that the user has a valid authentication token and was able to login successfully with the service.
 
-#### A note on REST and http
+### A note on REST and http
 
 Going forward in this tutorial we will be using lots of terms like *GET*, *POST*, *endpoint*, *https*, etc. All of these terms refer to ways that web browsers interact with web servers. At its core, our Shiny app is just a web server, and we need to program it to function as such by using certain things that are built into all web browsers.
 
@@ -446,13 +446,13 @@ A quick guide to the basic terms is,
   
   - `httr`: [httr](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) is the R package for doing all the things listed above. **I recommend reading the docs on httr** its incredibly useful, and unlocks the ability to use R with many web services.
 
-### Your first OAuth
+### Setup
 
 Now that you've reviewed your terms and have a little bit more familiarity with how internet applications work lets setup an OAuth wall in front of our existing app. This first pass OAuth will setup using an existing Github app's information. Once we have that working, we will guide you through how to set it up on your own.
 
 This app is based almost entirely on a Gist authored by Hadley [here](https://gist.github.com/hadley/144c406871768d0cbe66b0b810160528)
 
-#### `init.R`
+### install packages with `init.R`
 
 In order to make OAuth work we need to install the [httr](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) package. To install packages on the Heroku buildpack add a file named `init.R` to your folder. Copy and paste in the code below into that file.
 
@@ -476,7 +476,7 @@ invisible(sapply(my_packages, install_if_missing))
 
 This file is required if you want to install any packages on the Herku app that aren't in the default build (basically everything except Shiny).
 
-#### Remove run line from `app.R`
+### Remove run line from `app.R`
 
 We are going to pass more of the control of the app over to our `run.R` file. In order to do this properly, we will need to remove a line of code from our existing `app.R` file, or else the two shall conflict.
 
@@ -487,7 +487,7 @@ To do this, simply comment, or remove this line from your `app.R` file,
 # shinyApp(ui = ui, server = server)
 ```
 
-#### Modify `run.R`
+### Modify `run.R`
 
 The OAuth powerhouse is the `run.R` file. Here we take our existing `run.R` file, and wrap it in a series of functions and setps so that it does the redirect and validates the user is authenticated *before* launching the rest of the app. 
 
@@ -637,7 +637,7 @@ RunHerokuApp()
 
 Try now running this file, you should see a login prompt appear asking you to login to Github. Woo!
 
-#### Setup Github OAuth app
+### Setup Github OAuth app
 
 To get it to run on Heroku however, you need to setup your own Github OAuth application that works with your app's URL. To do that first, if you haven't already, create a *public* [Github account](https://github.com/join). Note that this is different than a Github Enterprise account, which is a *private* account.
 
