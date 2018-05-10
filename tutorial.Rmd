@@ -41,7 +41,9 @@ Let's get started by creating a simple unsecured Heroku application. The applica
 
 ### Create a new repo, or fork this one.
 
-Either fork this repository by clicking the [fork button]() on the Github page, or create your own on [Github](https://github.com). If you have Git installed you can clone directly in RStudio by going to
+Either fork this repository by clicking the [fork button](https://github.com/blakiseskream/shiny-heroku#fork-destination-box) on the Github page, or create your own on [Github](https://github.com). I recommend you make your own empty repository on Github, and then follow the below to bring it into RStudio.
+
+If you have Git installed you can clone directly in RStudio by going to
 
     File > New Project... > Version Control > Git
     
@@ -987,6 +989,25 @@ renderTable({
     pgData()
 })
 ```
+
+***
+## Hosting an RMarkdown as an app
+
+If you want to host an [interactive RMarkdown](https://rmarkdown.rstudio.com/authoring_shiny.html) on Heroku simply replace your final `runApp()` call in `run.R` with the following,
+
+```{r eval=FALSE}
+# Add as final run call in your run.R
+rmarkdown::run(
+    'my-markdown.Rmd'
+  , shiny_args = list(
+      port = port
+  )
+)
+```
+
+If you need this to sit behind OAuth consider adding it to the `uiFunc` or refer to this Stack Overflow article [here](https://stackoverflow.com/questions/33499651/rmarkdown-in-shiny-application)
+
+Also refer to the repository behind this app [here](https://github.com/blakiseskream/shiny-heroku) as an example
 
 ***
 
