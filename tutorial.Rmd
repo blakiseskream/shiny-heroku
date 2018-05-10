@@ -210,11 +210,16 @@ This will create a default app in your personal app space simply run the followi
 
     $ heroku apps:create name-of-your-app
 
-If you are running Heroku Enterprise and have a specific organization and or Private Space (**looking at you F&S**), you can set further parameters by doing
+If you are running Heroku Enterprise and have a specific organization (**looking at you F&S**), you can set further parameters by doing
     
-    $ heroku apps:create name-of-your-secure-app -t sfdc-gbo-fns --space fns-confidential
+    $ heroku apps:create name-of-your-secure-app -t sfdc-gbo-fns
     
-Creating an app in a Private Space is expensive but will make it incredibly secure. Only do this if hosting app with company confidential and or sensitive data.
+If the app has sensitive data, you must apply additional security by creating the app in a Private Space.
+
+    $ heroku apps:create name-of-your-secure-app -t sfdc-gbo-fns --space fns-confidential 
+    
+Creating an app in a Private Space is *expensive* but will make it incredibly secure. Only do this if hosting app with company confidential and or sensitive data.
+
 
 #### heroku buildpacks
 
@@ -663,6 +668,292 @@ app <- oauth_app("my-heroku-app",
 ```
 
 ### Commit & Push
+
+Push that up to Heroku. Remember to check your logs
+
+    heroku logs --tail
+    
+To verify, and perform an error tests. To see heroku logs specifically related to the web app, apply the `-d` parameter,
+
+    heroku logs --tail -d web.1
+    
+### Move secret & client to environment variables
+
+Now
+
+***
+
+## Adding Postgres
+
+Heroku has extensive Postgres documentation [here](https://devcenter.heroku.com/articles/heroku-postgresql). Refer to this on how to provision (create) the database on Heroku itself.
+
+### R Postgres Packages
+
+To work with R you will need to install two packages onto the app
+
+  - [RPostgreSQL](https://www.r-bloggers.com/getting-started-with-postgresql-in-r/)
+  - [pool](https://github.com/rstudio/pool)
+
+As always, I advise reading the documentation to understand these packages.
+
+#### add to `init.R`
+
+Remember you will need to add these to `init.R` in order to install. With `pool` we will install the development version directly from Github. 
+
+In order to do this we add the `devtools` package, and add `devtools::install_github("rstudio/pool")` to the end.
+
+```{r}
+# init.R
+my_packages = c("httr","RPostgreSQL","devtools")
+
+install_if_missing = function(p) {
+  if (p %in% rownames(installed.packages()) == FALSE) {
+    install.packages(p)
+  }
+}
+
+invisible(sapply(my_packages, install_if_missing))
+
+# install pool from Github
+invisible(devtools::install_github("rstudio/pool"))
+```
+
+#### include `Aptfile`
+
+For `RPostgreSQL` to install we need to install some files to the linux system on Heroku. We can do this by providing a file named `Aptfile`. Like `Procfile` this file has **no extension**,
+
+Save `Aptfile` to your file directory with the two lines of code,
+
+
+    libpq-dev
+    libxml2-dev
+
+
+Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16#installing-binary-dependencies)
+
+### Connecting via Shiny
+
+Once the database has been created on Heroku it adds an [environment variable](https://devcenter.heroku.com/articles/config-vars) called `DATABASE_URL`. This is the URL to connect to the Heroku database.
+
+You can access it via R by using the following function in your Shiny app.
+
+```{r}
+postgress.connect <- function() {
+  
+  # Make sure you install these!
+  require(RPostgreSQL)
+  require(pool)
+  
+  #driver
+  drv <- dbDriver("PostgreSQL")
+  
+  #attempt connection
+  if (Sys.getenv("DATABASE_URL") != "") {
+    url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
+    pool <- dbPool(drv
+                   , host     = url$hostname
+                   , port     = url$port
+                   , user     = url$user
+                   , password = url$password
+                   , dbname   = url$path
+    )
+    print("Heroku application detected connecting to Postgres")
+    
+  } else {
+    # You would setup a localhost  db connection to your personal computer here!
+  }
+  
+  return(pool)
+}
+```
+
+And then invoke the function when you need to connect to the database,
+
+```{r}
+pg <- postgress.connect()
+```
+
+### Example, saving data
+
+For example, you can modify your `app.R` to include a file upload button, and then a save to Postgres. Based almost entirely on this script [here](https://shiny.rstudio.com/gallery/file-upload.html).
+
+```{r eval=FALSE}
+# app.R
+library(shiny)
+library(RPostgreSQL)
+library(pool)
+  
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+   
+   # Application title
+   titlePanel("File upload"),
+   
+   # Sidebar with a slider input for number of bins 
+   sidebarLayout(
+      sidebarPanel(
+        fileInput("file1", "Choose CSV File",
+          multiple = FALSE,
+          accept = c(
+            "text/csv",
+            "text/comma-separated-values,text/plain",
+            ".csv")
+          ),
+        actionButton("viewData", label = "View data")
+      ),
+      
+      # Show a plot of the generated distribution
+      mainPanel(
+         tableOutput('postgresTable')
+      )
+   )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+  
+  postgress.connect <- function() {
+    #driver
+    drv <- dbDriver("PostgreSQL")
+    #attempt connection
+    if (Sys.getenv("DATABASE_URL") != "") {
+      url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
+      pool <- dbPool(drv
+                     , host     = url$hostname
+                     , port     = url$port
+                     , user     = url$user
+                     , password = url$password
+                     , dbname   = url$path
+      )
+      print("Heroku application detected connecting to Postgres")
+      
+    } else {
+      # SETUP local connection here
+    }
+    return(pool)
+  }
+  
+  
+  # File upload event listener
+  observeEvent(input$file1,{
+    # input$file1 will be NULL initially.
+    req(input$file1)
+    
+    # check to make sure an error doesn't occur
+    tryCatch({
+      df <- read.csv(input$file1$datapath)
+      # create connection
+      pg <- postgress.connect()
+      # remove table if exists
+      try(dbRemoveTable(pg, "upload_table"))
+      # write a new table
+      dbWriteTable(pg, 'upload_table', df, temporary = FALSE)
+      # close connection
+      pool::poolClose(pg)
+    }, error = function(e) {
+        # return a safeError if a parsing error occurs
+        stop(safeError(e))
+      }
+    )
+  })
+  
+  # create a reactive object for the database
+  pgData <- eventReactive(input$viewData, {
+    # create connection
+    pg <- postgress.connect()
+    # read data
+    data <- dbReadTable(pg, 'upload_table')
+    # close connection
+    pool::poolClose(pg)
+    # return data
+    return(data)
+  })
+  
+  output$postgresTable <- renderTable({
+    pgData()
+  })
+}
+
+```
+
+It should work like the below,
+
+#### Saving data
+
+```{r echo=FALSE}
+fileInput("file1", "Choose CSV File",
+  multiple = FALSE,
+  accept = c(
+    "text/csv",
+    "text/comma-separated-values,text/plain",
+    ".csv")
+  )
+actionButton("viewData", label = "View data")
+```
+
+```{r echo=FALSE}
+postgress.connect <- function() {
+  #driver
+  drv <- dbDriver("PostgreSQL")
+  #attempt connection
+  if (Sys.getenv("DATABASE_URL") != "") {
+    url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
+    pool <- dbPool(drv
+                   , host     = url$hostname
+                   , port     = url$port
+                   , user     = url$user
+                   , password = url$password
+                   , dbname   = url$path
+    )
+    print("Heroku application detected connecting to Postgres")
+    
+  } else {
+    # SETUP local connection here
+  }
+  return(pool)
+}
+
+
+# File upload event listener
+observeEvent(input$file1,{
+  # input$file1 will be NULL initially.
+  req(input$file1)
+  
+  # check to make sure an error doesn't occur
+  tryCatch({
+    df <- read.csv(input$file1$datapath)
+    # create connection
+    pg <- postgress.connect()
+    # remove table if exists
+    try(dbRemoveTable(pg, "upload_table"))
+    # write a new table
+    dbWriteTable(pg, 'upload_table', df, temporary = FALSE)
+    # close connection
+    pool::poolClose(pg)
+  }, error = function(e) {
+      # return a safeError if a parsing error occurs
+      stop(safeError(e))
+    }
+  )
+})
+
+# create a reactive object for the database
+pgData <- eventReactive(input$viewData, {
+  # create connection
+  pg <- postgress.connect()
+  # read data
+  data <- dbReadTable(pg, 'upload_table')
+  # close connection
+  pool::poolClose(pg)
+  # return data
+  return(data)
+})
+  
+renderTable({
+    pgData()
+})
+```
 
 
 
