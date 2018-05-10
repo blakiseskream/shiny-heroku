@@ -11,6 +11,9 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+library(pool)
+library(RPostgreSQL)
+
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(error = FALSE)
