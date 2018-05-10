@@ -682,13 +682,47 @@ To verify, and perform an error tests. To see heroku logs specifically related t
     
 ### Move secret & client to environment variables
 
-Now
+Now you will want to have your `APP_ID` and `CLIENT_SECRET` to be enviornment variables. You can set them as environment variables by going to the [Heroku dashboard](https://dashboard.heroku.com) for your app and then
+
+    Settings > Reveal Config Vars > Add
+  
+Type in the name of the variable in `KEY` and the value in `VALUE`.
+
+Read more about environment variables on Heroku [here](https://devcenter.heroku.com/articles/config-vars).
+
+In R you can add the environment variables to your app by again modifying the code to,
+
+```{r eval=FALSE}
+# deployed URL and token
+APP_URL <- Sys.getenv("APP_URL") # Set this variable on heroku!
+
+# register app
+app <- oauth_app("my-heroku-app", 
+  key = Sys.getenv("APP_ID"), # set this on HerokU!
+  secret = Sys.getenv("CLIENT_SECRET"), # set this on Heroku!
+  redirect_uri = APP_URL
+)
+```
 
 ***
 
 ## Adding Postgres
 
-Heroku has extensive Postgres documentation [here](https://devcenter.heroku.com/articles/heroku-postgresql). Refer to this on how to provision (create) the database on Heroku itself.
+[Postgres](https://www.postgresql.org/) is an open source SQL database. With Postgres we can host massive amounts of data behind our Shiny applications without slowing down the performance of the app itself. We can also do data manipulation and management via SQL / [dblyr](https://cran.r-project.org/web/packages/dbplyr/vignettes/dbplyr.html), which unlocks the full power of R.
+
+Before you begin this section it is recommended you go back to the top and install Postgres onto your local computer. This tutorial however will work perfectly even if you do not have Postgres installed on your local computer.
+
+### Postgres + Heroku
+
+Heroku has extensive Postgres documentation [here](https://devcenter.heroku.com/articles/heroku-postgresql). Refer to this on how to provision (create) the database on Heroku itself, work with the database, and do all kinds of fun things.
+
+To quickly add a Postgres database to your Heroku app go [here](https://elements.heroku.com/addons/heroku-postgresql) and select `Install Heroku Postgres`.
+
+Make sure you understand the various plans / levels, and select the database specific to your needs. 
+
+#### Note on Privacy
+
+If the database is housing private or company confidential information make sure you have the Postgres provisioned to an app that is on a Private Space by default the lowest Heroku Postgres Private Space plan includes 64 GB of data. Which should be plenty for advanced R Shiny applications.
 
 ### R Postgres Packages
 
@@ -727,10 +761,8 @@ For `RPostgreSQL` to install we need to install some files to the linux system o
 
 Save `Aptfile` to your file directory with the two lines of code,
 
-
     libpq-dev
     libxml2-dev
-
 
 Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16#installing-binary-dependencies)
 
@@ -882,8 +914,6 @@ server <- function(input, output) {
 
 It should work like the below,
 
-#### Saving data
-
 ```{r echo=FALSE}
 fileInput("file1", "Choose CSV File",
   multiple = FALSE,
@@ -958,6 +988,15 @@ renderTable({
 })
 ```
 
+***
+
+## Going further
+
+Congratulations! You know have the knowledge necessary to build a Shiny application on Heroku with security and database support. In doing this you probably will run into many errors. I advise you Google, Google, and Google. Heroku has extensive documentation on just about anything, and there are R packages out there that can also help you do anything.
+
+Have fun, stay safe.
+
+Andrew.
 
 
 [^1]: I will leave the debate as to whether or not Heroku is an effective platform for hosting Shiny Apps to the cynics. For beginners, its super easy, and allows for database backend / more customizability than options such as ShinyApps.io. You can also layer on more advanced security features, add-ons, etc. 
