@@ -2,7 +2,7 @@
 title: "Shiny on Heroku"
 author: "Andrew Watson"
 runtime: shiny
-date: "May 2018"
+date: "Oct 2021"
 output:
   html_document:
     df_print: paged
@@ -65,7 +65,6 @@ You can quickly run your first simple app if you wish by opening the `app.R` fil
 
 #### Old Faithful Geyser Data
 ```{r echo=FALSE}
-
 sliderInput("bins",
   "Number of bins:",
   min = 1,
@@ -229,25 +228,32 @@ Creating an app in a Private Space is *expensive* but will make it incredibly se
 
 Now that we've created the app we need to tell Heroku to install R on it. You can instruct Heroku to install certain programs on an app by using **buildpacks.** Heroku has some standard buildpacks, but most of them are created by community members and hosted on Github.
 
-For our apps we are going to start by using the [Heroku buildpack R](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Note we are using the heroku-16 version.
+For our apps we are going to start by using the [Heroku buildpack R](https://github.com/virtualstaticvoid/heroku-buildpack-r). Note we are using the heroku-18 version.
 
 <h5 style='color: red'>**STOP**</h5>
 
-Before going on with the tutorial please **EXTENSIVELY** review the documentation on the [buildpack's website](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Most of the tutorial will be leveraging information in that documentation, and will assume you have read it.
+Before going on with the tutorial please **EXTENSIVELY** review the documentation on the [buildpack's website](https://github.com/virtualstaticvoid/heroku-buildpack-r). Most of the tutorial will be leveraging information in that documentation, and will assume you have read it.
 
-Okay, now that you've read that add the buildpack to the app,
+Okay, now that you've read that, set to build on the Heroku-18 stack (as it is the one used by buildpack's website)
 
-    $ heroku buildpacks:add http://github.com/virtualstaticvoid/heroku-buildpack-r.git#heroku-16
+    $ heroku stack:set heroku-18
     
+
+and add the buildpack to the app,
+
+    $ heroku buildpacks:add https://github.com/virtualstaticvoid/heroku-buildpack-r.git
+    
+
 ### Push to heroku!
 
 Once the buildpack has been added you are good to go. You can push your brand new app directly to heroku by using the following command in the Terminal,
 
     $ git push heroku master
     
+
 This will create, build, and run your app. You should see the log output while it builds. Eventually you should see the following output or similar
 
-    remote:        R 3.4.0 successfully installed (with init)
+    remote: -----> R 4.0.0 installed successfully!
     remote: -----> Discovering process types
     remote:        Procfile declares types     -> (none)
     remote:        Default types for buildpack -> console, web
@@ -288,7 +294,8 @@ In our case, the serivce running on our app is the Shiny app from our `run.R` fi
 
 Add the heroku nginx buildpack to your existing application to index value 1 by running the following in the Terminal, 
 
-    $ heroku buildpacks:add https://github.com/heroku/heroku-buildpack-nginx --index 1
+    $ heroku buildpacks:add heroku-community/nginx --index 1
+    
 
 This will tell Heroku to install nginx first.
 
@@ -762,7 +769,7 @@ Save `Aptfile` to your file directory with the two lines of code,
     libpq-dev
     libxml2-dev
 
-Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16#installing-binary-dependencies)
+Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r#installing-binary-dependencies)
 
 ### Connecting via Shiny
 
