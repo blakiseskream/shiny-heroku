@@ -6,9 +6,9 @@
 # MIT License and shit
 #
 
-my_packages = c("rmarkdown","httr","RPostgreSQL","devtools")
+my_packages <- c("rmarkdown", "httr", "RPostgreSQL", "devtools")
 
-install_if_missing = function(p) {
+install_if_missing <- function(p) {
   if (p %in% rownames(installed.packages()) == FALSE) {
     install.packages(p)
   }

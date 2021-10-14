@@ -2,7 +2,7 @@
 title: "Shiny on Heroku"
 author: "Andrew Watson"
 runtime: shiny
-date: "May 2018"
+date: "Oct 2021"
 output:
   html_document:
     df_print: paged
@@ -13,6 +13,7 @@ output:
 ```{r setup, include=FALSE}
 library(pool)
 library(RPostgreSQL)
+library(shiny)
 
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE)
@@ -65,26 +66,24 @@ You can quickly run your first simple app if you wish by opening the `app.R` fil
 
 #### Old Faithful Geyser Data
 ```{r echo=FALSE}
-
 sliderInput("bins",
-           "Number of bins:",
-           min = 1,
-           max = 50,
-           value = 30)
-
+  "Number of bins:",
+  min = 1,
+  max = 50,
+  value = 30
+)
 ```
 
 
 ```{r echo=FALSE}
 renderPlot({
-    # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2] 
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    # draw the histogram with the specified number of bins
-    hist(x, breaks = bins, col = 'darkgray', border = 'white')
- })
+  # generate bins based on input$bins from ui.R
+  x <- faithful[, 2]
+  bins <- seq(min(x), max(x), length.out = input$bins + 1)
 
+  # draw the histogram with the specified number of bins
+  hist(x, breaks = bins, col = "darkgray", border = "white")
+})
 ```
 
 
@@ -101,14 +100,14 @@ Copy + paste in the code below into the file.
 library(shiny)
 
 # Gets the port # from Heroku
-port <- Sys.getenv('PORT')
+port <- Sys.getenv("PORT")
 
-# Runs the app in the working directory. By default this will search for an `app.R` file or 
+# Runs the app in the working directory. By default this will search for an `app.R` file or
 # a ui.R + server.R file combination
 # The host of 0.0.0.0 indicates the app runs at the web server's ip address
 shiny::runApp(
   appDir = getwd(),
-  host = '0.0.0.0',
+  host = "0.0.0.0",
   port = as.numeric(port)
 )
 ```
@@ -230,25 +229,32 @@ Creating an app in a Private Space is *expensive* but will make it incredibly se
 
 Now that we've created the app we need to tell Heroku to install R on it. You can instruct Heroku to install certain programs on an app by using **buildpacks.** Heroku has some standard buildpacks, but most of them are created by community members and hosted on Github.
 
-For our apps we are going to start by using the [Heroku buildpack R](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Note we are using the heroku-16 version.
+For our apps we are going to start by using the [Heroku buildpack R](https://github.com/virtualstaticvoid/heroku-buildpack-r). Note we are using the heroku-18 version.
 
 <h5 style='color: red'>**STOP**</h5>
 
-Before going on with the tutorial please **EXTENSIVELY** review the documentation on the [buildpack's website](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16). Most of the tutorial will be leveraging information in that documentation, and will assume you have read it.
+Before going on with the tutorial please **EXTENSIVELY** review the documentation on the [buildpack's website](https://github.com/virtualstaticvoid/heroku-buildpack-r). Most of the tutorial will be leveraging information in that documentation, and will assume you have read it.
 
-Okay, now that you've read that add the buildpack to the app,
+Okay, now that you've read that, set to build on the Heroku-18 stack (as it is the one used by buildpack's website)
 
-    $ heroku buildpacks:add http://github.com/virtualstaticvoid/heroku-buildpack-r.git#heroku-16
+    $ heroku stack:set heroku-18
     
+
+and add the buildpack to the app,
+
+    $ heroku buildpacks:add https://github.com/virtualstaticvoid/heroku-buildpack-r.git
+    
+
 ### Push to heroku!
 
 Once the buildpack has been added you are good to go. You can push your brand new app directly to heroku by using the following command in the Terminal,
 
     $ git push heroku master
     
+
 This will create, build, and run your app. You should see the log output while it builds. Eventually you should see the following output or similar
 
-    remote:        R 3.4.0 successfully installed (with init)
+    remote: -----> R 4.0.0 installed successfully!
     remote: -----> Discovering process types
     remote:        Procfile declares types     -> (none)
     remote:        Default types for buildpack -> console, web
@@ -289,7 +295,8 @@ In our case, the serivce running on our app is the Shiny app from our `run.R` fi
 
 Add the heroku nginx buildpack to your existing application to index value 1 by running the following in the Terminal, 
 
-    $ heroku buildpacks:add https://github.com/heroku/heroku-buildpack-nginx --index 1
+    $ heroku buildpacks:add heroku-community/nginx --index 1
+    
 
 This will tell Heroku to install nginx first.
 
@@ -301,17 +308,17 @@ Now we need to modify the `run.R` file to run *behind* NGINX. We can modify our 
 library(shiny)
 
 # When we run nginx we need to change R to point to the /app folder manually
-setwd('/app')
+setwd("/app")
 
 # Create a file at the path /tmp/app-initalized
 # This tells nginx that the app is running, and it can now forward traffic to the custom 'port' below
 # If this file is created, nginx will simply wait forever until the app says its running
 file.create("/tmp/app-initialized")
-port <- '/tmp/nginx.socket'
-attr(port, 'mask') <- strtoi("117", 8)
-  
-  
-# Runs the app in the working directory. By default this will search for an `app.R` file or 
+port <- "/tmp/nginx.socket"
+attr(port, "mask") <- strtoi("117", 8)
+
+
+# Runs the app in the working directory. By default this will search for an `app.R` file or
 # a ui.R + server.R file combination
 # In this case the port is now the address to the nginx proxy
 shiny::runApp(
@@ -324,7 +331,8 @@ shiny::runApp(
 
 Add a file to your directly simply called Procfile (no file extension!). This is a file that tells Heroku what command to run when it starts up. Its a simple file, with only the following line of code,
 
-    web: env FAKECHROOT_EXCLUDE_PATH=/tmp:/bin bin/start-nginx fakechroot fakeroot chroot /app/.root /usr/bin/R -f /app/run.R --gui-none --no-save 
+    web: env FAKECHROOT_EXCLUDE_PATH=/tmp:/bin bin/start-nginx /app/bin/fakechroot /app/bin/fakeroot /app/bin/chroot /app/.root /app/R/lib/R/bin/R -f /app/run.R --gui-none --no-save 
+    
 
 #### Add nginx config
 
@@ -332,7 +340,7 @@ We need to add a custom config file so nginx works with Shiny. Create a `config/
 
 
     daemon off;
-    #Heroku dynos have at least 4 cores.
+    # Heroku dynos have at least 4 cores.
     worker_processes <%= ENV['NGINX_WORKERS'] || 4 %>;
     
     events {
@@ -356,7 +364,7 @@ We need to add a custom config file so nginx works with Shiny. Create a `config/
       default_type application/octet-stream;
       sendfile on;
       
-      #Must read the body in 5 seconds.
+      # Must read the body in 5 seconds.
       client_body_timeout 5;
       
       upstream app_server {
@@ -376,10 +384,10 @@ We need to add a custom config file so nginx works with Shiny. Create a `config/
         }
         
         location /websocket/ {
-            proxy_pass http://app_server;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "Upgrade";
+          proxy_pass http://app_server;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "Upgrade";
         }
       }
     }
@@ -403,7 +411,7 @@ Now commit and push your new and improved app to heroku.
 
     $ git add *
     $ git commit -m "added nginx"
-    $ git push heroku
+    $ git push heroku master
 
 ***
 
@@ -470,11 +478,11 @@ In order to make OAuth work we need to install the [httr](https://cran.r-project
 # Add a list of packages you want to install here
 # The list, like every list in R, should be comma seperated
 # Package names in quotes, e.g. c("lubridate","httr","dplyr")
-my_packages = c("httr")
+my_packages <- c("httr")
 
 
 # This is a simple function that will install the packages in the list
-install_if_missing = function(p) {
+install_if_missing <- function(p) {
   if (p %in% rownames(installed.packages()) == FALSE) {
     install.packages(p)
   }
@@ -493,7 +501,7 @@ We are going to pass more of the control of the app over to our `run.R` file. In
 To do this, simply comment, or remove this line from your `app.R` file,
 
 ```{r}
-# Run the application 
+# Run the application
 # shinyApp(ui = ui, server = server)
 ```
 
@@ -507,7 +515,7 @@ Copy and paste the code below, *in its entirety* into your `run.R` file.
 
 ```{r eval=FALSE}
 # TODO: To get this to work on Heroku you will need to fill out the info,
-# set APP_URL to your heroku apps url 
+# set APP_URL to your heroku apps url
 # set key = to the Github application's Client ID
 # set secret = to the Github application's Client Secret
 # Create a Github OAuth app here https://github.com/settings/applications/new
@@ -516,53 +524,51 @@ library(shiny)
 library(httr)
 
 RunHerokuApp <- function() {
-  
-# OAuth setup --------------------------------------------------------
+
+  # OAuth setup --------------------------------------------------------
   # (1) Most OAuth applications require that you redirect to a fixed and known
   # set of URLs. Many only allow you to redirect to a single URL: if this
   # is the case for, you'll need to create an app for testing with a localhost
   # url, and an app for your deployed app.
-  
+
   if (interactive()) {
     # testing url and token
     options(shiny.port = 8100)
     APP_URL <- "http://localhost:8100/"
-    
+
     # (2) Note that secret is not really secret, and it's fine to include inline
     app <- oauth_app("shiny-local-app",
       key = "51d46f96810d1fd182a2",
       secret = "66eec8782825eeb61007dbef32f91afc9c3587aa",
       redirect_uri = APP_URL
     )
-    
   } else {
-    
-    setwd('/app')
-    
+    setwd("/app")
+
     # deployed URL and token
     APP_URL <- "https://my-app-name.herokuapp.com/" # NOTE: SET THIS TO YOUR APP'S URL
-    
+
     # (2) Note that secret is not really secret, and it's fine to include inline
     # NOTE: SET THIS BASED ON YOUR GITHUB APP.
-    app <- oauth_app("my-heroku-app", 
+    app <- oauth_app("my-heroku-app",
       key = "MY_APP_ID",
       secret = "MY_SECRET_KEY",
       redirect_uri = APP_URL
     )
   }
-  
+
   # (3) Here I'm using a canned endpoint, but you can create with oauth_endpoint()
   api <- oauth_endpoints("github")
-  
+
   # (4) Always request the minimal scope needed. For github, an empty scope
   # gives read-only access to public info
   scope <- ""
-  
-# Shiny -------------------------------------------------------------------
-  
+
+  # Shiny -------------------------------------------------------------------
+
   # Bring in the server.R and ui.R objects
-  source('app.R')
-  
+  source("app.R")
+
   has_auth_code <- function(params) {
     # params is a list object containing the parsed URL parameters. Return TRUE if
     # based on these parameters, it looks like auth codes are present that we can
@@ -570,14 +576,14 @@ RunHerokuApp <- function() {
     # flow.
     return(!is.null(params$code))
   }
-  
+
   # (5) A little-known feature of Shiny is that the UI can be a function, not just
   # objects. You can use this to dynamically render the UI based on the request.
   # We're going to pass this uiFunc, not ui, to shinyApp(). If you're using
   # ui.R/server.R style files, that's fine too--just make this function the last
   # expression in your ui.R file.
   uiFunc <- function(req) {
-    
+
     # (6) Check if HTTPs
     if (!interactive()) {
       if (req$HTTP_X_FORWARDED_PROTO != "https") {
@@ -586,51 +592,50 @@ RunHerokuApp <- function() {
     } else {
       print("localhost app, not verifying https")
     }
-    
+
     # (7) Check if token in URL, else redirect
     if (!has_auth_code(parseQueryString(req$QUERY_STRING))) {
       url <- oauth2.0_authorize_url(api, app, scope = scope)
       redirect <- sprintf("location.replace(\"%s\");", url)
       tags$script(HTML(redirect))
     } else {
-      
+
       # (8) Manually create a token (saved to local environment)
       token <<- oauth2.0_token(
         app = app,
         endpoint = api,
         credentials = oauth2.0_access_token(
-          api, 
-          app, 
+          api,
+          app,
           parseQueryString(req$QUERY_STRING)$code
         ),
         cache = FALSE
       )
-      
+
       # (9) Perform a GET request to confirm access
       resp <- GET("https://api.github.com/user", config(token = token))
       stop_for_status(resp) # CRASH APP IF ERROR RETURNED
-      
+
       return(ui) # otherwise return UI
     }
   }
-  
+
   # (10) Note that we're using uiFunc, not ui!
   if (interactive()) {
-    
+
     # run locally
     shinyApp(uiFunc, server)
-    
   } else {
-    
+
     # Create a file at the path /tmp/app-initalized
     # This tells nginx that the app is running, and it can now forward traffic to the custom 'port' below
     # If this file is created, nginx will simply wait forever until the app says its running
     file.create("/tmp/app-initialized")
-    port <- '/tmp/nginx.socket'
-    attr(port, 'mask') <- strtoi("117", 8)
-      
-      
-    # Runs the app in the working directory. By default this will search for an `app.R` file or 
+    port <- "/tmp/nginx.socket"
+    attr(port, "mask") <- strtoi("117", 8)
+
+
+    # Runs the app in the working directory. By default this will search for an `app.R` file or
     # a ui.R + server.R file combination
     # In this case the port is now the address to the nginx proxy
     shiny::runApp(
@@ -665,7 +670,7 @@ APP_URL <- "https://my-app-name.herokuapp.com/" # NOTE: SET THIS TO YOUR APP'S U
 
 # (2) Note that secret is not really secret, and it's fine to include inline
 # NOTE: SET THIS BASED ON YOUR GITHUB APP.
-app <- oauth_app("my-heroku-app", 
+app <- oauth_app("my-heroku-app",
   key = "MY_APP_ID",
   secret = "MY_SECRET_KEY",
   redirect_uri = APP_URL
@@ -699,7 +704,7 @@ In R you can add the environment variables to your app by again modifying the co
 APP_URL <- Sys.getenv("APP_URL") # Set this variable on heroku!
 
 # register app
-app <- oauth_app("my-heroku-app", 
+app <- oauth_app("my-heroku-app",
   key = Sys.getenv("APP_ID"), # set this on HerokU!
   secret = Sys.getenv("CLIENT_SECRET"), # set this on Heroku!
   redirect_uri = APP_URL
@@ -743,9 +748,9 @@ In order to do this we add the `devtools` package, and add `devtools::install_gi
 
 ```{r}
 # init.R
-my_packages = c("httr","RPostgreSQL","devtools")
+my_packages <- c("httr", "RPostgreSQL", "devtools")
 
-install_if_missing = function(p) {
+install_if_missing <- function(p) {
   if (p %in% rownames(installed.packages()) == FALSE) {
     install.packages(p)
   }
@@ -766,7 +771,7 @@ Save `Aptfile` to your file directory with the two lines of code,
     libpq-dev
     libxml2-dev
 
-Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r/tree/heroku-16#installing-binary-dependencies)
+Please read more about `Aptfile` on the Heroku R buildpack Github [here](https://github.com/virtualstaticvoid/heroku-buildpack-r#installing-binary-dependencies)
 
 ### Connecting via Shiny
 
@@ -776,30 +781,29 @@ You can access it via R by using the following function in your Shiny app.
 
 ```{r}
 postgress.connect <- function() {
-  
+
   # Make sure you install these!
   require(RPostgreSQL)
   require(pool)
-  
-  #driver
+
+  # driver
   drv <- dbDriver("PostgreSQL")
-  
-  #attempt connection
+
+  # attempt connection
   if (Sys.getenv("DATABASE_URL") != "") {
     url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
-    pool <- dbPool(drv
-                   , host     = url$hostname
-                   , port     = url$port
-                   , user     = url$user
-                   , password = url$password
-                   , dbname   = url$path
+    pool <- dbPool(drv,
+      host = url$hostname,
+      port = url$port,
+      user = url$user,
+      password = url$password,
+      dbname = url$path
     )
     print("Heroku application detected connecting to Postgres")
-    
   } else {
     # You would setup a localhost  db connection to your personal computer here!
   }
-  
+
   return(pool)
 }
 ```
@@ -819,99 +823,99 @@ For example, you can modify your `app.R` to include a file upload button, and th
 library(shiny)
 library(RPostgreSQL)
 library(pool)
-  
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-   
-   # Application title
-   titlePanel("File upload"),
-   
-   # Sidebar with a slider input for number of bins 
-   sidebarLayout(
-      sidebarPanel(
-        fileInput("file1", "Choose CSV File",
-          multiple = FALSE,
-          accept = c(
-            "text/csv",
-            "text/comma-separated-values,text/plain",
-            ".csv")
-          ),
-        actionButton("viewData", label = "View data")
+
+  # Application title
+  titlePanel("File upload"),
+
+  # Sidebar with a slider input for number of bins
+  sidebarLayout(
+    sidebarPanel(
+      fileInput("file1", "Choose CSV File",
+        multiple = FALSE,
+        accept = c(
+          "text/csv",
+          "text/comma-separated-values,text/plain",
+          ".csv"
+        )
       ),
-      
-      # Show a plot of the generated distribution
-      mainPanel(
-         tableOutput('postgresTable')
-      )
-   )
+      actionButton("viewData", label = "View data")
+    ),
+
+    # Show a plot of the generated distribution
+    mainPanel(
+      tableOutput("postgresTable")
+    )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
   postgress.connect <- function() {
-    #driver
+    # driver
     drv <- dbDriver("PostgreSQL")
-    #attempt connection
+    # attempt connection
     if (Sys.getenv("DATABASE_URL") != "") {
       url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
-      pool <- dbPool(drv
-                     , host     = url$hostname
-                     , port     = url$port
-                     , user     = url$user
-                     , password = url$password
-                     , dbname   = url$path
+      pool <- dbPool(drv,
+        host = url$hostname,
+        port = url$port,
+        user = url$user,
+        password = url$password,
+        dbname = url$path
       )
       print("Heroku application detected connecting to Postgres")
-      
     } else {
       # SETUP local connection here
     }
     return(pool)
   }
-  
-  
+
+
   # File upload event listener
-  observeEvent(input$file1,{
+  observeEvent(input$file1, {
     # input$file1 will be NULL initially.
     req(input$file1)
-    
+
     # check to make sure an error doesn't occur
-    tryCatch({
-      df <- read.csv(input$file1$datapath)
-      # create connection
-      pg <- postgress.connect()
-      # remove table if exists
-      try(dbRemoveTable(pg, "upload_table"))
-      # write a new table
-      dbWriteTable(pg, 'upload_table', df, temporary = FALSE)
-      # close connection
-      pool::poolClose(pg)
-    }, error = function(e) {
+    tryCatch(
+      {
+        df <- read.csv(input$file1$datapath)
+        # create connection
+        pg <- postgress.connect()
+        # remove table if exists
+        try(dbRemoveTable(pg, "upload_table"))
+        # write a new table
+        dbWriteTable(pg, "upload_table", df, temporary = FALSE)
+        # close connection
+        pool::poolClose(pg)
+      },
+      error = function(e) {
         # return a safeError if a parsing error occurs
         stop(safeError(e))
       }
     )
   })
-  
+
   # create a reactive object for the database
   pgData <- eventReactive(input$viewData, {
     # create connection
     pg <- postgress.connect()
     # read data
-    data <- dbReadTable(pg, 'upload_table')
+    data <- dbReadTable(pg, "upload_table")
     # close connection
     pool::poolClose(pg)
     # return data
     return(data)
   })
-  
+
   output$postgresTable <- renderTable({
     pgData()
   })
 }
-
 ```
 
 It should work like the below,
@@ -922,27 +926,27 @@ fileInput("file1", "Choose CSV File",
   accept = c(
     "text/csv",
     "text/comma-separated-values,text/plain",
-    ".csv")
+    ".csv"
   )
+)
 actionButton("viewData", label = "View data")
 ```
 
 ```{r echo=FALSE}
 postgress.connect <- function() {
-  #driver
+  # driver
   drv <- dbDriver("PostgreSQL")
-  #attempt connection
+  # attempt connection
   if (Sys.getenv("DATABASE_URL") != "") {
     url <- httr::parse_url(Sys.getenv("DATABASE_URL"))
-    pool <- dbPool(drv
-                   , host     = url$hostname
-                   , port     = url$port
-                   , user     = url$user
-                   , password = url$password
-                   , dbname   = url$path
+    pool <- dbPool(drv,
+      host = url$hostname,
+      port = url$port,
+      user = url$user,
+      password = url$password,
+      dbname = url$path
     )
     print("Heroku application detected connecting to Postgres")
-    
   } else {
     # SETUP local connection here
   }
@@ -951,22 +955,24 @@ postgress.connect <- function() {
 
 
 # File upload event listener
-observeEvent(input$file1,{
+observeEvent(input$file1, {
   # input$file1 will be NULL initially.
   req(input$file1)
-  
+
   # check to make sure an error doesn't occur
-  tryCatch({
-    df <- read.csv(input$file1$datapath)
-    # create connection
-    pg <- postgress.connect()
-    # remove table if exists
-    try(dbRemoveTable(pg, "upload_table"))
-    # write a new table
-    dbWriteTable(pg, 'upload_table', df, temporary = FALSE)
-    # close connection
-    pool::poolClose(pg)
-  }, error = function(e) {
+  tryCatch(
+    {
+      df <- read.csv(input$file1$datapath)
+      # create connection
+      pg <- postgress.connect()
+      # remove table if exists
+      try(dbRemoveTable(pg, "upload_table"))
+      # write a new table
+      dbWriteTable(pg, "upload_table", df, temporary = FALSE)
+      # close connection
+      pool::poolClose(pg)
+    },
+    error = function(e) {
       # return a safeError if a parsing error occurs
       stop(safeError(e))
     }
@@ -978,15 +984,15 @@ pgData <- eventReactive(input$viewData, {
   # create connection
   pg <- postgress.connect()
   # read data
-  data <- dbReadTable(pg, 'upload_table')
+  data <- dbReadTable(pg, "upload_table")
   # close connection
   pool::poolClose(pg)
   # return data
   return(data)
 })
-  
+
 renderTable({
-    pgData()
+  pgData()
 })
 ```
 
@@ -998,9 +1004,9 @@ If you want to host an [interactive RMarkdown](https://rmarkdown.rstudio.com/aut
 ```{r eval=FALSE}
 # Add as final run call in your run.R
 rmarkdown::run(
-    'my-markdown.Rmd'
-  , shiny_args = list(
-      port = port
+  "my-markdown.Rmd",
+  shiny_args = list(
+    port = port
   )
 )
 ```
