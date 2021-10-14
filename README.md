@@ -2,4 +2,8 @@
 
 tutorial on creating R shiny apps on heroku, with security, and database support
 
-**Lovingly hosted as a Heroku application [here](https://ancient-citadel-64265.herokuapp.com/)**
+# Get Started
+
+To get started, clone the repo and open `tutorial.Rmd` to read through it.
+
+Enjoy!
